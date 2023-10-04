@@ -55,8 +55,6 @@ func containsYearAfterMonth(input string, month string) string {
 	return match
 }
 
-// This func must be Exported, Capitalized, and comment added.
-// date = Sábado, 25 de Novembro de 2023 - Abertura: 20:00
 func ParseDate(date string) (*time.Time, error) {
 	regex := regexp.MustCompile(`\d{2}/\d{2}/\d{4}`)
 	match := regex.FindString(date)

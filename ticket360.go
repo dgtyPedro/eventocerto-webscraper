@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"strings"
 	"time"
 	"unicode"
@@ -23,6 +25,8 @@ type Event struct {
 
 var events []Event
 
+var currentCategory string
+
 func removeSpace(s string) string {
 	rr := make([]rune, 0, len(s))
 	var spaceCount int
@@ -41,7 +45,7 @@ func removeSpace(s string) string {
 	return strings.Replace(string(rr), "\n", " ", -1)
 }
 
-func visitCategory(h *colly.HTMLElement) {
+func visitCategories(h *colly.HTMLElement) {
 	parent := h.DOM.Parent()
 	items := parent.Find("li")
 	items.Each(func(index int, item *goquery.Selection) {
@@ -69,14 +73,14 @@ func getEvent(h *colly.HTMLElement) Event {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Event finded:", title, date)
+		fmt.Println("Event finded:", title, date, currentCategory)
 
 		event = Event{
 			Title:     title,
 			Date:      *date,
 			Thumbnail: src,
 			Location:  location,
-			Genre:     "",
+			Genre:     currentCategory,
 			Website:   "Ticket360",
 		}
 	})
@@ -100,16 +104,23 @@ func main() {
 		)
 	})
 
+	c.OnHTML("a[href='/categoria/1/musica']", func(h *colly.HTMLElement) {
+		visitCategories(h)
+		fmt.Println("Visiting:", h.Request.URL)
+	})
+
 	c.OnHTML("a[title='Próxima Página']", func(h *colly.HTMLElement) {
 		h.Request.Visit(h.Attr("href"))
 	})
 
-	c.OnHTML("a[href='/categoria/1/musica']", func(h *colly.HTMLElement) {
-		visitCategory(h)
-		fmt.Println("Visiting:", h.Request.URL)
-	})
-
 	c.OnHTML(".m-portlet", func(h *colly.HTMLElement) {
+		body := h.Response.Body
+		reader := bytes.NewReader(body)
+		doc, err := goquery.NewDocumentFromReader(reader)
+		if err != nil {
+			log.Fatal(err)
+		}
+		currentCategory = doc.Find(".m-subheader__title").Text()
 		event := getEvent(h)
 		events = append(events, event)
 	})
