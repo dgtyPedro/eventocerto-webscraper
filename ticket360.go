@@ -45,6 +45,20 @@ func removeSpace(s string) string {
 	return strings.Replace(string(rr), "\n", " ", -1)
 }
 
+func removeDuplicates(s []Event) []Event {
+	bucket := make(map[Event]bool)
+	var result []Event
+	for _, event := range s {
+		if _, ok := bucket[event]; !ok {
+			bucket[event] = true
+			result = append(result, event)
+		} else {
+			fmt.Println("Repetido: ", event)
+		}
+	}
+	return result
+}
+
 func visitCategories(h *colly.HTMLElement) {
 	parent := h.DOM.Parent()
 	items := parent.Find("li")
@@ -93,6 +107,14 @@ func getEvent(h *colly.HTMLElement) Event {
 func main() {
 	fmt.Println("Hello world :)")
 
+	db, err := dbConnection()
+	if err != nil {
+		log.Printf("Error %s when getting db connection", err)
+		return
+	}
+	defer db.Close()
+	log.Printf("Successfully connected to database")
+
 	c := colly.NewCollector(
 		colly.AllowedDomains("www.ticket360.com.br"),
 	)
@@ -121,8 +143,11 @@ func main() {
 			log.Fatal(err)
 		}
 		currentCategory = doc.Find(".m-subheader__title").Text()
-		event := getEvent(h)
-		events = append(events, event)
+		fmt.Println(currentCategory)
+		if currentCategory != "" {
+			event := getEvent(h)
+			events = append(events, event)
+		}
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
@@ -131,8 +156,21 @@ func main() {
 
 	c.Visit("https://www.ticket360.com.br/")
 
+	events := removeDuplicates(events)
+
 	file, _ := json.MarshalIndent(events, "", " ")
 
 	_ = ioutil.WriteFile("events.json", file, 0644)
 
+	err = resetWebsiteEvents(db, "Ticket360")
+	if err != nil {
+		log.Printf("Reset Ticket360 events failed with error %s", err)
+	}
+
+	for _, event := range events {
+		err = insertEvent(db, event)
+		if err != nil {
+			log.Printf("Insert event failed with error %s", err)
+		}
+	}
 }
