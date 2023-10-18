@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -59,7 +60,7 @@ func removeDuplicates(s []Event) []Event {
 	return result
 }
 
-func visitCategories(h *colly.HTMLElement) {
+func visitCategories(h *colly.HTMLElement, wg *sync.WaitGroup) {
 	parent := h.DOM.Parent()
 	items := parent.Find("li")
 	items.Each(func(index int, item *goquery.Selection) {
@@ -69,7 +70,8 @@ func visitCategories(h *colly.HTMLElement) {
 	})
 }
 
-func getEvent(h *colly.HTMLElement) Event {
+func getEvent(h *colly.HTMLElement, wg *sync.WaitGroup) {
+	wg.Add(1)
 	var event Event
 
 	e := colly.NewCollector(
@@ -97,15 +99,17 @@ func getEvent(h *colly.HTMLElement) Event {
 			Genre:     currentCategory,
 			Website:   "Ticket360",
 		}
+		events = append(events, event)
+		wg.Done()
 	})
+	go e.Visit("https://www.ticket360.com.br/" + href)
 
-	e.Visit("https://www.ticket360.com.br/" + href)
-
-	return event
 }
 
 func main() {
+	start := time.Now()
 	fmt.Println("Hello world :)")
+	wg := &sync.WaitGroup{}
 
 	db, err := dbConnection()
 	if err != nil {
@@ -127,7 +131,7 @@ func main() {
 	})
 
 	c.OnHTML("a[href='/categoria/1/musica']", func(h *colly.HTMLElement) {
-		visitCategories(h)
+		visitCategories(h, wg)
 		fmt.Println("Visiting:", h.Request.URL)
 	})
 
@@ -145,8 +149,7 @@ func main() {
 		currentCategory = doc.Find(".m-subheader__title").Text()
 		fmt.Println(currentCategory)
 		if currentCategory != "" {
-			event := getEvent(h)
-			events = append(events, event)
+			getEvent(h, wg)
 		}
 	})
 
@@ -155,6 +158,8 @@ func main() {
 	})
 
 	c.Visit("https://www.ticket360.com.br/")
+
+	wg.Wait()
 
 	events := removeDuplicates(events)
 
@@ -173,4 +178,6 @@ func main() {
 			log.Printf("Insert event failed with error %s", err)
 		}
 	}
+
+	fmt.Println("Completed in: ", time.Since(start))
 }
