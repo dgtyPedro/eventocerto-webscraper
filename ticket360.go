@@ -3,9 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +17,7 @@ import (
 
 type Event struct {
 	Title     string
+	Link 	  string
 	Date      time.Time
 	Thumbnail string
 	Location  string
@@ -53,10 +54,9 @@ func removeDuplicates(s []Event) []Event {
 		if _, ok := bucket[event]; !ok {
 			bucket[event] = true
 			result = append(result, event)
-		} else {
-			fmt.Println("Repetido: ", event)
-		}
+		} 
 	}
+	log.Printf("%s duplicated events", strconv.Itoa(len(s) - len(result)))
 	return result
 }
 
@@ -89,10 +89,10 @@ func getEvent(h *colly.HTMLElement, wg *sync.WaitGroup) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Event finded:", title, date, currentCategory)
 
 		event = Event{
 			Title:     title,
+			Link:      "https://www.ticket360.com.br/" + href,
 			Date:      *date,
 			Thumbnail: src,
 			Location:  location,
@@ -102,13 +102,14 @@ func getEvent(h *colly.HTMLElement, wg *sync.WaitGroup) {
 		events = append(events, event)
 		wg.Done()
 	})
+
 	go e.Visit("https://www.ticket360.com.br/" + href)
 
 }
 
 func main() {
 	start := time.Now()
-	fmt.Println("Hello world :)")
+	log.Printf("Hello world :)")
 	wg := &sync.WaitGroup{}
 
 	db, err := dbConnection()
@@ -132,7 +133,6 @@ func main() {
 
 	c.OnHTML("a[href='/categoria/1/musica']", func(h *colly.HTMLElement) {
 		visitCategories(h, wg)
-		fmt.Println("Visiting:", h.Request.URL)
 	})
 
 	c.OnHTML("a[title='Próxima Página']", func(h *colly.HTMLElement) {
@@ -147,14 +147,13 @@ func main() {
 			log.Fatal(err)
 		}
 		currentCategory = doc.Find(".m-subheader__title").Text()
-		fmt.Println(currentCategory)
 		if currentCategory != "" {
 			getEvent(h, wg)
 		}
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
-		fmt.Println("Error: ", err.Error())
+		log.Printf("Error: %s", err.Error())
 	})
 
 	c.Visit("https://www.ticket360.com.br/")
@@ -172,6 +171,8 @@ func main() {
 		log.Printf("Reset Ticket360 events failed with error %s", err)
 	}
 
+	log.Printf("%s events founded", strconv.Itoa(len(events)))
+
 	for _, event := range events {
 		err = insertEvent(db, event)
 		if err != nil {
@@ -179,5 +180,5 @@ func main() {
 		}
 	}
 
-	fmt.Println("Completed in: ", time.Since(start))
+	log.Printf("Completed in: %s", time.Since(start))
 }

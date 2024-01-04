@@ -56,7 +56,7 @@ func dbConnection() (*sql.DB, error) {
 }
 
 func resetWebsiteEvents(db *sql.DB, website string) error {
-	query := "DELETE FROM `events` WHERE website = (?)"
+	query := "DELETE FROM `event` WHERE website = (?)"
 	_, err := db.ExecContext(context.Background(), query, website)
 	if err != nil {
 		log.Fatalf("impossible to reset events: %s", err)
@@ -68,8 +68,8 @@ func insertEvent(db *sql.DB, event Event) error {
 	uuid := uuid.New()
 
 	idStr := uuid.String()
-	query := "INSERT INTO `events` (`id`, `title`, `date`, `thumbnail`, `location`, `genre`, `website`) VALUES (?, ?, ?, ?, ?, ?, ?)"
-	insertResult, err := db.ExecContext(context.Background(), query, idStr, event.Title, event.Date, event.Thumbnail, event.Location, event.Genre, event.Website)
+	query := "INSERT INTO `event` (`id`, `title`, `link`, `date`, `thumbnail`, `location`, `genre`, `website`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+	insertResult, err := db.ExecContext(context.Background(), query, idStr, event.Title, event.Link, event.Date, event.Thumbnail, event.Location, event.Genre, event.Website)
 	if err != nil {
 		log.Fatalf("impossible insert event: %s", err)
 	}
