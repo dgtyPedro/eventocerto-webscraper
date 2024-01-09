@@ -33,7 +33,7 @@ func dsn() string {
 	return fmt.Sprintf("%s:%s@tcp(%s)/%s", username, password, hostname, dbName)
 }
 
-func dbConnection() (*sql.DB, error) {
+func dbConnect() (*sql.DB, error) {
 	db, err := sql.Open("mysql", dsn())
 	if err != nil {
 		log.Printf("Error %s when opening DB", err)
@@ -59,7 +59,7 @@ func resetWebsiteEvents(db *sql.DB, website string) error {
 	query := "DELETE FROM `event` WHERE website = (?)"
 	_, err := db.ExecContext(context.Background(), query, website)
 	if err != nil {
-		log.Fatalf("impossible to reset events: %s", err)
+		log.Printf("impossible to reset events: %s", err)
 	}
 	return nil
 }
@@ -71,11 +71,11 @@ func insertEvent(db *sql.DB, event Event) error {
 	query := "INSERT INTO `event` (`id`, `title`, `link`, `date`, `thumbnail`, `location`, `genre`, `website`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 	insertResult, err := db.ExecContext(context.Background(), query, idStr, event.Title, event.Link, event.Date, event.Thumbnail, event.Location, event.Genre, event.Website)
 	if err != nil {
-		log.Fatalf("impossible insert event: %s", err)
+		log.Printf("impossible insert event: %s", err)
 	}
 	_, err = insertResult.LastInsertId()
 	if err != nil {
-		log.Fatalf("impossible to retrieve last inserted id: %s", err)
+		log.Printf("impossible to retrieve last inserted id: %s", err)
 	}
 	return nil
 }

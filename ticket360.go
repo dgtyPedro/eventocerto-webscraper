@@ -27,8 +27,6 @@ type Event struct {
 
 var events []Event
 
-var currentCategory string
-
 func removeSpace(s string) string {
 	rr := make([]rune, 0, len(s))
 	var spaceCount int
@@ -70,7 +68,7 @@ func visitCategories(h *colly.HTMLElement, wg *sync.WaitGroup) {
 	})
 }
 
-func getEvent(h *colly.HTMLElement, wg *sync.WaitGroup) {
+func getEvent(h *colly.HTMLElement, wg *sync.WaitGroup, currentCategory string) {
 	wg.Add(1)
 	var event Event
 
@@ -112,7 +110,7 @@ func main() {
 	log.Printf("Hello world :)")
 	wg := &sync.WaitGroup{}
 
-	db, err := dbConnection()
+	db, err := dbConnect()
 	if err != nil {
 		log.Printf("Error %s when getting db connection", err)
 		return
@@ -146,9 +144,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		currentCategory = doc.Find(".m-subheader__title").Text()
+		currentCategory := doc.Find(".m-subheader__title").Text()
 		if currentCategory != "" {
-			getEvent(h, wg)
+			getEvent(h, wg, currentCategory)
 		}
 	})
 
