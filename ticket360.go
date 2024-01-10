@@ -144,7 +144,28 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		currentCategory := doc.Find(".m-subheader__title").Text()
+		currentCategory := strings.ToLower(strings.ReplaceAll(doc.Find(".m-subheader__title").Text(), " ", ""))
+		switch currentCategory {
+		case "samba/pagode", "sertanejo&country", "mpb", "brega", "forró", "axé", "funk":
+			currentCategory = "brazilian"
+			break;
+		case "pop":
+			currentCategory = "pop"
+			break;
+		case "rock", "pop-rock", "rock&roll", "punkrock":
+			currentCategory = "rock"
+			break;
+		case "jazz&blues":
+			currentCategory = "jazz"
+			break;
+		case "rap/hip-hop", "trap":
+			currentCategory = "rap"
+			break;
+		case "reggae":
+			currentCategory = "reggae"
+			break;
+		}
+
 		if currentCategory != "" {
 			getEvent(h, wg, currentCategory)
 		}
